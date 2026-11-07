@@ -1,15 +1,20 @@
-# Публикация в npm по тегу.
+# Публикация в npm по тегу — без токенов и секретов.
 #
 # Зачем: DSH показывает кнопку «Обновить» только для пакетов, установленных из
 # реестра. Публикация вручную — это каждый раз «поднять версию, закоммитить,
-# npm login, npm publish». Здесь достаточно поставить тег: версия берётся из
-# package.json, а токен — из секрета репозитория.
+# npm login, npm publish». Здесь достаточно поставить тег.
 #
-# Настройка (один раз):
-#   1. Получите токен: https://www.npmjs.com/settings/<ник>/tokens
-#      тип «Automation» — он не требует 2FA при публикации из CI.
-#   2. GitHub → Settings → Secrets and variables → Actions → New repository
-#      secret: имя NPM_TOKEN, значение — токен.
+# Аутентификация — Trusted Publishing (OIDC): GitHub выдаёт короткоживущий
+# токен на один запуск, npm проверяет его по настроенному доверенному
+# издателю. Долгоживущий NPM_TOKEN не нужен, хранить нечего, утекать нечему.
+#
+# Настройка на npmjs.com (один раз, ПОСЛЕ первой ручной публикации — до неё
+# пакета ещё нет и настроить издателя негде):
+#   Package → Settings → Trusted Publisher → GitHub Actions:
+#     Organization or user: d3d-root
+#     Repository:           dsh-plugin-agent-browser
+#     Workflow filename:    publish.yml
+#     Environment:          (оставить пустым)
 #
 # Выпуск новой версии:
 #   1. Поднимите "version" в package.json и допишите раздел в CHANGELOG.md.
@@ -28,6 +33,9 @@ on:
 
 permissions:
   contents: read
+  # id-token нужен для OIDC: без него npm не сможет подтвердить, что публикует
+  # именно этот workflow этого репозитория.
+  id-token: write
 
 jobs:
   publish:
@@ -35,10 +43,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 22: npm 11.5.1+ требуется для OIDC, а он идёт с этим рантаймом.
+      # registry-url намеренно не задаём: setup-node тогда прописал бы в .npmrc
+      # `_authToken=${NODE_AUTH_TOKEN}`, а токена у нас нет — npm упал бы с
+      # ENONPMTOKEN вместо того, чтобы использовать OIDC.
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+          node-version: "22"
+
+      - name: Убедиться, что npm умеет OIDC
+        run: |
+          npm install -g npm@latest
+          npm --version
 
       # Версия в теге и в package.json должна совпадать.
       - name: Проверить совпадение тега и версии
@@ -55,10 +71,11 @@ jobs:
       - name: Тесты
         run: node --test test/bridge.test.mjs
 
-      - name: Проверить, что бандл собирается
+      - name: Проверить синтаксис
         run: node --check lib/index.js && node --check lib/bridge.mjs
 
+      # Токена нет: npm получает OIDC-токен от GitHub сам.
+      # --provenance добавляет подписанное подтверждение сборки: пользователь
+      # видит, из какого коммита и какого workflow собран пакет.
       - name: Публикация
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
