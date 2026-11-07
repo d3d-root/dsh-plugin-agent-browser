@@ -166,11 +166,41 @@ with bypass 2fa enabled is required to publish packages.
 ```
 
 Включение: https://www.npmjs.com/settings → **Two-Factor Authentication** →
-**Enable 2FA** → **Authenticator app** → отсканируйте QR-код приложением
-(Google Authenticator, Authy, 1Password, Aegis) → введите код.
+**Enable 2FA**.
 
 **Сохраните коды восстановления**, которые покажет npm. Без них потеря
 телефона означает потерю доступа к аккаунту.
+
+##### Если в интерфейсе доступен только Security key
+
+npm не всегда предлагает способ «Authenticator app»: на странице настройки
+2FA может быть единственный вариант **Security key**. Это известное
+ограничение ([обсуждение](https://github.com/orgs/community/discussions/181802)).
+
+Проблема в том, что security key не выдаёт шестизначных кодов, а значит
+`npm publish --otp=…` с таким аккаунтом работать не будет: npm отвечает `E403`
+даже на верный ключ.
+
+Решение — **granular-токен с обходом 2FA** (сам npm предлагает его в тексте
+ошибки):
+
+1. https://www.npmjs.com/settings/~/tokens → **Generate New Token** →
+   **Granular Access Token**
+2. **Permissions:** Read and write
+3. Галочка **Bypass two-factor authentication (2FA)** — обязательна
+4. **Packages:** All packages (нового пакета ещё нет, выбрать его нельзя)
+5. **Generate Token** и скопируйте
+
+Публикация с этим токеном:
+
+```powershell
+cd dsh-plugin-agent-browser
+& "C:\Program Files\nodejs\npm.cmd" publish --access public --//registry.npmjs.org/:_authToken=ВАШ_ТОКЕН
+```
+
+Токен одноразовый в том смысле, что его достаточно один раз: сразу после
+публикации настройте Trusted Publishing (шаг 3), и он больше не понадобится —
+дальше публикует GitHub Actions по OIDC. После настройки токен можно отозвать.
 
 #### Шаг 2. Первая публикация — вручную
 
