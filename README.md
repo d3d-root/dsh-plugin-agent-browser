@@ -31,6 +31,7 @@
 
 Дополнительно: [подробная установка](docs/install.md) ·
 [история версий](CHANGELOG.md) ·
+[план развития](ROADMAP.md) ·
 [как устроено внутри](docs/architecture.md) ·
 [сравнение с MCP](docs/mcp-vs-plugin.md) ·
 [как выложить свою версию](docs/publishing.md)

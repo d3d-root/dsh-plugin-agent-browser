@@ -32,6 +32,7 @@
     "docs/screenshot.png",
     "README.md",
     "CHANGELOG.md",
+    "ROADMAP.md",
     "LICENSE"
   ],
   "engines": {
