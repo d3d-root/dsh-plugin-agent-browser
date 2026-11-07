@@ -38,7 +38,7 @@ process.on('exit', () => {
  * @param answers - что панель отвечает на команду: тип → `result` команды.
  * @returns `{ tools, call, stop }`.
  */
-async function rig(answers) {
+async function rig(answers, options = {}) {
   const bridge = createBridge()
   const transport = await startLoopbackTransport(bridge, { token: TOKEN, basePath: '/dsh-agent-browser' })
 
@@ -103,7 +103,16 @@ async function rig(answers) {
       on() {},
       logger: { info() {}, warn() {}, error() {} },
     },
-    { debug: false, logFile: join(tmpdir(), 'dsh-agent-browser-tools-test.log') },
+    {
+      debug: false,
+      logFile: join(tmpdir(), 'dsh-agent-browser-tools-test.log'),
+      // Язык задаём явно. Часть ответов приходит из словаря MESSAGES
+      // («Скриншот сохранён», «видимая область»), а по умолчанию язык
+      // выбирается по локали машины: на CI она en-US, и проверки русских
+      // строк падали бы при том же коде. Тесты не должны зависеть от
+      // окружения — иначе зелёный прогон локально ничего не значит.
+      language: options.language || 'ru',
+    },
   )
 
   const call = async (name, args = {}) => {
@@ -324,4 +333,17 @@ test('browser_download идёт хостовым путём, если стран
   const out = await r.call('browser_download', { url: 'http://127.0.0.1:9/empty.bin' })
   assert.match(out, /Скачать не удалось/)
   assert.match(out, /локальные адреса/)
+})
+
+test('язык ответов берётся из настройки, а не из локали машины', async (t) => {
+  // На CI локаль en-US, локально ru-RU. Если ответы приходят из словаря
+  // MESSAGES, тест обязан зафиксировать язык настройкой — иначе он зелёный
+  // на одной машине и красный на другой при том же коде (ровно так упал
+  // прогон 2.1.1 в GitHub Actions).
+  const png = Buffer.from('fake-png').toString('base64')
+  const r = await rig({ screenshot: () => ({ dataUrl: `data:image/png;base64,${png}` }) }, { language: 'en' })
+  t.after(() => r.stop())
+  const out = await r.call('browser_screenshot', { path: 'en.png' })
+  assert.match(out, /Screenshot saved/, `ответ на английском: ${out}`)
+  assert.doesNotMatch(out, /Скриншот сохранён/, 'русская строка не должна просачиваться в en-режим')
 })
