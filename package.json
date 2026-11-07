@@ -1,75 +1,75 @@
-﻿{
-    "name":  "dsh-plugin-agent-browser",
-    "version":  "1.1.0-dev.1",
-    "description":  "A real browser in the DeepSeek Harness right sidebar вЂ” one per chat, driven by agent tools",
-    "keywords":  [
-                     "dsh",
-                     "dsh-plugin",
-                     "dsh-bundle",
-                     "deepseek-harness",
-                     "browser",
-                     "webview",
-                     "agent"
-                 ],
-    "license":  "MIT",
-    "author":  "d3d-root",
-    "type":  "module",
-    "main":  "lib/index.js",
-    "exports":  {
-                    ".":  "./lib/index.js",
-                    "./client":  "./lib/client.js",
-                    "./bridge":  "./lib/bridge.mjs",
-                    "./package.json":  "./package.json"
-                },
-    "files":  [
-                  "lib/index.js",
-                  "lib/client.js",
-                  "lib/bridge.mjs",
-                  "cordis.patch.yml",
-                  "docs/install.md",
-                  "docs/architecture.md",
-                  "docs/mcp-vs-plugin.md",
-                  "docs/screenshot.png",
-                  "README.md",
-                  "CHANGELOG.md",
-                  "ROADMAP.md",
-                  "LICENSE"
-              ],
-    "engines":  {
-                    "dsh":  "\u003e=0.2.1-rc.2",
-                    "node":  "\u003e=20"
-                },
-    "peerDependencies":  {
-                             "@deepseek-ai/cordis":  "~4.0.5"
-                         },
-    "peerDependenciesMeta":  {
-                                 "@deepseek-ai/cordis":  {
-                                                             "optional":  true
-                                                         }
-                             },
-    "scripts":  {
-                    "test":  "node --test test/bridge.test.mjs",
-                    "test:watch":  "node --test --watch test/bridge.test.mjs",
-                    "prepublishOnly":  "node --test test/bridge.test.mjs"
-                },
-    "repository":  {
-                       "type":  "git",
-                       "url":  "git+https://github.com/d3d-root/dsh-plugin-agent-browser.git"
-                   },
-    "bugs":  {
-                 "url":  "https://github.com/d3d-root/dsh-plugin-agent-browser/issues"
-             },
-    "homepage":  "https://github.com/d3d-root/dsh-plugin-agent-browser#readme",
-    "dsh":  {
-                "manifestVersion":  1,
-                "bundle":  {
-                               "patch":  "./cordis.patch.yml"
-                           },
-                "client":  {
-                               "platform":  "web",
-                               "inject":  [
-                                              "@deepseek-ai/dsh-client-ui-sidebar-right"
-                                          ]
-                           }
-            }
+{
+  "name": "dsh-plugin-agent-browser",
+  "version": "1.1.0-dev.1",
+  "description": "A real browser in the DeepSeek Harness right sidebar — one per chat, driven by agent tools",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "deepseek-harness",
+    "browser",
+    "webview",
+    "agent"
+  ],
+  "license": "MIT",
+  "author": "d3d-root",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./bridge": "./lib/bridge.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/bridge.mjs",
+    "cordis.patch.yml",
+    "docs/install.md",
+    "docs/architecture.md",
+    "docs/mcp-vs-plugin.md",
+    "docs/screenshot.png",
+    "README.md",
+    "CHANGELOG.md",
+    "ROADMAP.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "dsh": ">=0.2.1-rc.2",
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.5"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "test": "node --test --test-force-exit test/bridge.test.mjs test/plugin.test.mjs",
+    "test:watch": "node --test --watch test/bridge.test.mjs test/plugin.test.mjs",
+    "prepublishOnly": "node --test --test-force-exit test/bridge.test.mjs test/plugin.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d3d-root/dsh-plugin-agent-browser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/d3d-root/dsh-plugin-agent-browser/issues"
+  },
+  "homepage": "https://github.com/d3d-root/dsh-plugin-agent-browser#readme",
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    }
+  }
 }

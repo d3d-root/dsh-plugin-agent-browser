@@ -30,8 +30,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Тесты моста
-        run: node --test test/bridge.test.mjs
+      - name: Тесты
+        run: node --test --test-force-exit test/bridge.test.mjs test/plugin.test.mjs
 
       - name: Синтаксис
         run: |

@@ -69,7 +69,7 @@ jobs:
 
       # Тесты моста не требуют ни сети, ни DSH.
       - name: Тесты
-        run: node --test test/bridge.test.mjs
+        run: node --test --test-force-exit test/bridge.test.mjs test/plugin.test.mjs
 
       - name: Проверить синтаксис
         run: node --check lib/index.js && node --check lib/bridge.mjs
