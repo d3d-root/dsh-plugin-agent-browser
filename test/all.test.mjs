@@ -12,3 +12,4 @@
 import './bridge.test.mjs'
 import './plugin.test.mjs'
 import './tools.test.mjs'
+import './client-snippets.test.mjs'
