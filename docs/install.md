@@ -15,19 +15,10 @@
 
 ---
 
-## Способ 1: из npm (рекомендуется)
+## Способ 1: через интерфейс DSH (рекомендуется)
 
 Даёт **кнопку обновления** в списке плагинов: DSH сверяет версию с реестром и
 предлагает новую в один клик.
-
-### Через терминал
-
-```powershell
-$Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
-& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser"
-```
-
-### Через интерфейс
 
 1. Откройте DSH.
 2. В левой панели нажмите **Plugins** (или **Settings → Plugins**).
@@ -51,7 +42,7 @@ $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\ds
 ## Способ 2: из GitHub
 
 Если не хотите зависеть от npm. Кнопки обновления не будет — обновляться
-придётся той же командой.
+придётся командой.
 
 В **Add plugin** вставьте адрес репозитория:
 
@@ -59,36 +50,36 @@ $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\ds
 https://github.com/d3d-root/dsh-plugin-agent-browser
 ```
 
-Или в терминале:
-
-```powershell
-& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
-```
-
 ---
 
-## Способ 3: из папки
+## Способ 3: через терминал
 
-Если репозиторий уже скачан:
-
-1. **Plugins → Add plugin** → выберите **абсолютный путь** к папке
-   `dsh-plugin-agent-browser`.
-2. Включите плагин и перезапустите DSH.
-
----
-
-## Вручную, если интерфейс не подходит
+Если интерфейс не подходит — например, настраиваете DSH скриптом.
 
 ```powershell
 $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
 
+# из npm
 & $Dsh plugin --profile desktop add "dsh-plugin-agent-browser"
+
+# либо из GitHub
+& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
 ```
 
 Затем добавьте `dsh-plugin-agent-browser` в `dsh.profile.bundles` файла
 `%USERPROFILE%\.dsh\profiles\desktop\package.json` и перезапустите DSH.
 
 > Профиль может называться иначе: посмотрите папки в `%USERPROFILE%\.dsh\profiles\`.
+
+---
+
+## Способ 4: из папки
+
+Если репозиторий уже скачан:
+
+1. **Plugins → Add plugin** → выберите **абсолютный путь** к папке
+   `dsh-plugin-agent-browser`.
+2. Включите плагин и перезапустите DSH.
 
 ---
 

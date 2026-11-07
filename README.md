@@ -60,30 +60,25 @@
 
 ## Установка
 
-### Способ 1: из npm (рекомендуется)
+### Способ 1: через интерфейс DSH (рекомендуется)
 
-```powershell
-$Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
-& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser"
-```
+1. Откройте боковую панель DSH → **Plugins**.
+2. Нажмите **Add plugin**.
+3. Вставьте имя пакета:
 
-Затем **полностью перезапустите DSH** — выйдите из приложения и запустите заново.
+   ```
+   dsh-plugin-agent-browser
+   ```
+
+4. Дождитесь установки и **включите** плагин переключателем.
+5. **Полностью перезапустите DSH** — выйдите из приложения и запустите заново.
 
 Этот способ даёт **кнопку обновления** в списке плагинов: DSH сверяет версию с
 реестром и предлагает новую в один клик.
 
-Через интерфейс то же самое: **Plugins → Add plugin** → вставьте
-`dsh-plugin-agent-browser` → включите → перезапустите.
-
 ### Способ 2: из GitHub
 
-Если не хотите зависеть от npm:
-
-```powershell
-& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
-```
-
-Или в интерфейсе: **Plugins → Add plugin** → вставьте адрес репозитория
+Если не хотите зависеть от npm. В **Add plugin** вставьте адрес репозитория
 
 ```
 https://github.com/d3d-root/dsh-plugin-agent-browser
@@ -91,23 +86,24 @@ https://github.com/d3d-root/dsh-plugin-agent-browser
 
 Можно указать и **абсолютный путь** к скачанной папке плагина.
 
-У этого способа кнопки обновления нет — обновляться нужно той же командой
+У этого способа кнопки обновления нет — обновляться нужно командой
 (см. [Обновление](#обновление)).
 
-### Способ 3: вручную, если UI не подходит
+### Способ 3: через терминал
+
+Если интерфейс не подходит — например, настраиваете DSH скриптом:
 
 ```powershell
 $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
 
-# 1) подключить пакет в профиль (профиль обычно desktop)
+# из npm (появится кнопка обновления)
 & $Dsh plugin --profile desktop add "dsh-plugin-agent-browser"
 
-# 2) добавить "dsh-plugin-agent-browser" в dsh.profile.bundles
-#    файла %USERPROFILE%\.dsh\profiles\desktop\package.json
-#    (или просто включить плагин на странице Plugins)
+# либо из GitHub
+& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
 ```
 
-Затем перезапустите DSH.
+Затем **полностью перезапустите DSH** — выйдите из приложения и запустите заново.
 
 Плагин объявляет `dsh.bundle.patch`, поэтому менеджер плагинов принимает его
 как бандл и сам добавляет в `dsh.profile.bundles` профиля.
