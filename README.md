@@ -30,6 +30,7 @@
 - [Ограничения](#ограничения)
 
 Дополнительно: [подробная установка](docs/install.md) ·
+[история версий](CHANGELOG.md) ·
 [как устроено внутри](docs/architecture.md) ·
 [сравнение с MCP](docs/mcp-vs-plugin.md) ·
 [как выложить свою версию](docs/publishing.md)
@@ -110,6 +111,22 @@ $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\ds
 ```powershell
 Get-Content "$env:TEMP\dsh-agent-browser.log" -Tail 5
 ```
+
+### Обновление
+
+Версию видно в `browser_status` (строка «Версия плагина») и в журнале.
+
+Для установки из GitHub кнопки «Обновить» в интерфейсе нет — DSH показывает её
+только для пакетов из npm. Обновление — одной командой, затем перезапуск DSH:
+
+```powershell
+$Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
+& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
+```
+
+Команда сама переустановит плагин с последнего коммита и покажет смену версии.
+Подробности и откат — в [`docs/install.md`](docs/install.md#обновление),
+история версий — в [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
