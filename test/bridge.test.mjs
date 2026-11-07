@@ -445,3 +445,93 @@ test('одно окно отвечает not-mine, а второе берёт к
   assert.equal(body.ok, true)
   assert.equal(body.result.opened, true)
 })
+
+// --- Хранилище состояния входа ---
+//
+// Профиль Chromium в DSH не переживает перезапуск, поэтому вход сохраняется
+// файлом рядом с плагином. Здесь проверяется маршрутизация и то, что мост не
+// подменяет адаптер по умолчанию.
+
+test('/storage/save и /storage/get возвращают сохранённое состояние входа', async () => {
+  const bridge = createBridge()
+  const transport = await startLoopbackTransport(bridge, { port: 0, token: 't' })
+  try {
+    const save = await fetch(`${transport.base}/storage/save`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-agent-browser-token': 't' },
+      body: JSON.stringify({
+        origin: 'https://example.com',
+        cookie: 'sid=abc',
+        local: { theme: 'dark' },
+        session: {},
+      }),
+    })
+    assert.equal(save.status, 200)
+
+    const got = await fetch(`${transport.base}/storage/get`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-agent-browser-token': 't' },
+      body: JSON.stringify({ origin: 'https://example.com' }),
+    })
+    const answer = await got.json()
+    assert.equal(answer.ok, true)
+    assert.equal(answer.data.cookie, 'sid=abc')
+    assert.equal(answer.data.local.theme, 'dark')
+  } finally {
+    await transport.close()
+  }
+})
+
+test('/storage/get для неизвестного origin отдаёт null, а не ошибку', async () => {
+  const bridge = createBridge()
+  const transport = await startLoopbackTransport(bridge, { port: 0, token: 't' })
+  try {
+    const response = await fetch(`${transport.base}/storage/get`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-agent-browser-token': 't' },
+      body: JSON.stringify({ origin: 'https://never-seen.example' }),
+    })
+    const answer = await response.json()
+    assert.equal(answer.ok, true)
+    assert.equal(answer.data, null)
+  } finally {
+    await transport.close()
+  }
+})
+
+test('/storage/save без origin отвергается', async () => {
+  const bridge = createBridge()
+  const transport = await startLoopbackTransport(bridge, { port: 0, token: 't' })
+  try {
+    const response = await fetch(`${transport.base}/storage/save`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-agent-browser-token': 't' },
+      body: JSON.stringify({ cookie: 'sid=abc' }),
+    })
+    assert.equal(response.status, 400)
+  } finally {
+    await transport.close()
+  }
+})
+
+test('свой адаптер хранилища подменяет память по умолчанию', async () => {
+  const saved = new Map()
+  const bridge = createBridge({
+    storage: {
+      save: (origin, data) => saved.set(origin, data),
+      get: (origin) => saved.get(origin) || null,
+      clear: () => saved.clear(),
+    },
+  })
+  const transport = await startLoopbackTransport(bridge, { port: 0, token: 't' })
+  try {
+    await fetch(`${transport.base}/storage/save`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-agent-browser-token': 't' },
+      body: JSON.stringify({ origin: 'https://a.example', cookie: 'x=1' }),
+    })
+    assert.equal(saved.get('https://a.example').cookie, 'x=1')
+  } finally {
+    await transport.close()
+  }
+})
