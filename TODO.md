@@ -31,9 +31,15 @@ git tag v1.1.0-dev.2; git push origin v1.1.0-dev.2   # workflow публикуе
 - [x] `browser_pdf` — печать страницы в PDF
 - [x] `browser_zoom` — масштаб
 - [x] `browser_find_in_page` — поиск по тексту как Ctrl+F
-- [x] `browser_save_session` / `browser_restore_session` — cookie и storage переживают перезапуск
+- [x] `browser_save_session` / `browser_restore_session` / `browser_storage_clear` — cookie и storage переживают перезапуск
 - [x] `browser_page_state` — диагностика страницы
 - [x] `browser_screenshot { fullPage: true }` — вся страница
+- [x] `tabId` во всех 35 инструментах (AsyncLocalStorage — безопасно при параллельных вызовах)
+- [x] `browser_trace` + настройка `trace` — последние команды с длительностью
+- [x] CI на каждый push (Ubuntu + Windows)
+- [x] Тесты хранилища: 27 тестов
+
+Итого инструментов: **35** (было 22).
 
 ## Осталось
 
