@@ -150,10 +150,27 @@ workflow, npm проверяет его по настроенному довер
 доверенного издателя **до** первой публикации нельзя — пакета на npm ещё нет,
 и страницы настроек у него тоже нет.
 
-#### Шаг 1. Подтвердите почту
+#### Шаг 1. Подтвердите почту и включите 2FA
 
 https://www.npmjs.com/settings → **Account**. Без подтверждённой почты npm не
 даст опубликовать пакет.
+
+**2FA обязательна.** С июля 2026 npm требует интерактивное подтверждение при
+прямой публикации, а токены с обходом 2FA больше не могут публиковать пакеты
+([changelog](https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/)).
+Без включённой 2FA `npm publish` отвечает:
+
+```
+E403 403 Forbidden - Two-factor authentication or granular access token
+with bypass 2fa enabled is required to publish packages.
+```
+
+Включение: https://www.npmjs.com/settings → **Two-Factor Authentication** →
+**Enable 2FA** → **Authenticator app** → отсканируйте QR-код приложением
+(Google Authenticator, Authy, 1Password, Aegis) → введите код.
+
+**Сохраните коды восстановления**, которые покажет npm. Без них потеря
+телефона означает потерю доступа к аккаунту.
 
 #### Шаг 2. Первая публикация — вручную
 
@@ -161,10 +178,15 @@ https://www.npmjs.com/settings → **Account**. Без подтверждённ�
 cd dsh-plugin-agent-browser
 & "C:\Program Files\nodejs\npm.cmd" login                # один раз, откроется браузер
 & "C:\Program Files\nodejs\npm.cmd" pack --dry-run       # что попадёт в архив
-& "C:\Program Files\nodejs\npm.cmd" publish --access public
+
+# код из приложения-аутентификатора, живёт 30 секунд
+& "C:\Program Files\nodejs\npm.cmd" publish --access public --otp=123456
 ```
 
-Если включена 2FA, npm попросит код из приложения-аутентификатора.
+Без `--otp` npm спросит код отдельным вопросом — тоже рабочий вариант.
+
+**Это единственный раз, когда нужен код.** Дальше публикует GitHub Actions по
+OIDC, а он 2FA не требует.
 
 #### Шаг 3. Настройте доверенного издателя
 
