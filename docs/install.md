@@ -15,15 +15,27 @@
 
 ---
 
-## Способ 1: через список плагинов (проще всего)
+## Способ 1: из npm (рекомендуется)
+
+Даёт **кнопку обновления** в списке плагинов: DSH сверяет версию с реестром и
+предлагает новую в один клик.
+
+### Через терминал
+
+```powershell
+$Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
+& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser"
+```
+
+### Через интерфейс
 
 1. Откройте DSH.
 2. В левой панели нажмите **Plugins** (или **Settings → Plugins**).
 3. Нажмите **Add plugin**.
-4. Вставьте адрес репозитория:
+4. Вставьте имя пакета:
 
    ```
-   https://github.com/d3d-root/dsh-plugin-agent-browser
+   dsh-plugin-agent-browser
    ```
 
 5. Дождитесь установки. Плагин появится в списке с переключателем.
@@ -36,7 +48,26 @@
 
 ---
 
-## Способ 2: из папки
+## Способ 2: из GitHub
+
+Если не хотите зависеть от npm. Кнопки обновления не будет — обновляться
+придётся той же командой.
+
+В **Add plugin** вставьте адрес репозитория:
+
+```
+https://github.com/d3d-root/dsh-plugin-agent-browser
+```
+
+Или в терминале:
+
+```powershell
+& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
+```
+
+---
+
+## Способ 3: из папки
 
 Если репозиторий уже скачан:
 
@@ -46,14 +77,12 @@
 
 ---
 
-## Способ 3: вручную, через терминал
-
-Нужен `pnpm`. Он лежит внутри DSH:
+## Вручную, если интерфейс не подходит
 
 ```powershell
 $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
 
-& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
+& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser"
 ```
 
 Затем добавьте `dsh-plugin-agent-browser` в `dsh.profile.bundles` файла
@@ -157,36 +186,8 @@ $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\ds
 
 > проверь браузер
 
-`browser_status` последней строкой покажет `Версия плагина: 1.0.2`. Та же
+`browser_status` последней строкой покажет `Версия плагина: 1.0.3`. Та же
 строка есть в журнале при старте.
-
-### Обновление установки из GitHub
-
-Кнопки «Обновить» в интерфейсе для такого способа установки **нет**: DSH
-показывает её только для пакетов из npm-реестра. Обновление делается одной
-командой — она переустанавливает плагин с последнего коммита:
-
-```powershell
-$Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
-
-& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
-```
-
-Команда показывает смену версии:
-
-```
-- dsh-plugin-agent-browser 1.0.1
-+ dsh-plugin-agent-browser 1.0.2
-Done in 4.3s using pnpm v11.28.5
-```
-
-Затем **полностью перезапустите DSH** — обновлённые файлы подхватываются
-только при старте приложения.
-
-> Профиль может называться иначе: посмотрите папки в `%USERPROFILE%\.dsh\profiles\`.
-
-Через интерфейс то же самое: **Plugins** → выключить плагин → удалить →
-**Add plugin** → вставить ссылку на репозиторий → включить → перезапустить.
 
 ### Обновление установки из npm (кнопка в интерфейсе)
 
@@ -198,6 +199,39 @@ Done in 4.3s using pnpm v11.28.5
 молча, но при открытии списка плагинов сразу показывает, что вышла новая, и
 обновляет в один клик.
 
+Если кнопки нет — обновитесь командой:
+
+```powershell
+$Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
+& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser@latest"
+```
+
+### Обновление установки из GitHub
+
+Кнопки «Обновить» для такого способа установки **нет**: DSH показывает её только
+для пакетов из реестра. Обновление — одной командой, она переустанавливает
+плагин с последнего коммита:
+
+```powershell
+& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
+```
+
+Команда показывает смену версии:
+
+```
+- dsh-plugin-agent-browser 1.0.2
++ dsh-plugin-agent-browser 1.0.3
+Done in 1.5s using pnpm v11.28.5
+```
+
+Затем **полностью перезапустите DSH** — обновлённые файлы подхватываются
+только при старте приложения.
+
+> Профиль может называться иначе: посмотрите папки в `%USERPROFILE%\.dsh\profiles\`.
+
+Через интерфейс то же самое: **Plugins** → выключить плагин → удалить →
+**Add plugin** → вставить ссылку на репозиторий → включить → перезапустить.
+
 ### Как перейти с установки из GitHub на npm
 
 Нужно **один раз** переустановить плагин: DSH решает, показывать ли кнопку, по
@@ -207,7 +241,7 @@ Done in 4.3s using pnpm v11.28.5
 $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
 
 # переустановка из реестра: спецификация в манифесте заменится на реестровую
-& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser"
+& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser@latest"
 
 # затем полностью перезапустите DSH
 ```
@@ -217,6 +251,9 @@ $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\ds
 
 Проверить, что кнопка появилась: **Plugins** → карточка плагина. Рядом с
 версией будет кнопка обновления (если в реестре есть версия новее).
+
+> Указывайте `@latest` или точную версию. Без версии pnpm может решить, что
+> пакет уже установлен, и оставить git-спецификацию в манифесте.
 
 ### Что переносится при обновлении
 
@@ -229,14 +266,21 @@ $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\ds
 
 ### Откат на предыдущую версию
 
-Поставьте конкретный коммит:
+Из npm — точной версией:
+
+```powershell
+& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser@1.0.2"
+```
+
+Из Git — конкретным коммитом:
 
 ```powershell
 & $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser#<коммит>"
 ```
 
-Список версий и коммитов — в [CHANGELOG](../CHANGELOG.md) и в истории
-репозитория.
+Список версий — в [CHANGELOG](../CHANGELOG.md), на
+[npm](https://www.npmjs.com/package/dsh-plugin-agent-browser?activeTab=versions)
+и в истории репозитория.
 
 ---
 
