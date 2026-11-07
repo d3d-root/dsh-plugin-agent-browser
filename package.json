@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-agent-browser",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "A real browser in the DeepSeek Harness right sidebar — one per chat, driven by agent tools",
   "keywords": [
     "dsh",
@@ -25,6 +25,7 @@
     "lib/index.js",
     "lib/client.js",
     "lib/bridge.mjs",
+    "lib/download.mjs",
     "cordis.patch.yml",
     "docs/install.md",
     "docs/architecture.md",
@@ -53,6 +54,7 @@
     "test:plugin": "node --test-force-exit test/plugin.test.mjs",
     "test:tools": "node --test-force-exit test/tools.test.mjs",
     "test:client": "node --test-force-exit test/client-snippets.test.mjs",
+    "test:download": "node --test-force-exit test/download.test.mjs",
     "test:watch": "node --test --watch test/all.test.mjs",
     "prepublishOnly": "node --test-force-exit test/all.test.mjs"
   },

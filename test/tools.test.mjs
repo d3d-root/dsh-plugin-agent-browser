@@ -12,6 +12,7 @@
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createBridge, startLoopbackTransport } from '../lib/bridge.mjs'
@@ -19,6 +20,17 @@ import { createBridge, startLoopbackTransport } from '../lib/bridge.mjs'
 const SESSION = 'session-tools-test'
 const PANEL = 'panel-tools-test'
 const TOKEN = 'tools-test-token'
+
+// Рабочий каталог «чата»: инструменты пишут файлы только внутрь него, поэтому
+// тест создаёт свой временный каталог и не мусорит в репозитории.
+const WORKSPACE = mkdtempSync(join(tmpdir(), 'dsh-agent-browser-ws-'))
+process.on('exit', () => {
+  try {
+    rmSync(WORKSPACE, { recursive: true, force: true })
+  } catch {
+    /* каталог мог остаться занятым */
+  }
+})
 
 /**
  * Поднять плагин поверх настоящего моста и поддельной панели.
@@ -97,7 +109,11 @@ async function rig(answers) {
   const call = async (name, args = {}) => {
     const tool = registered.find((entry) => entry.name === name)
     assert.ok(tool, `нет инструмента ${name}`)
-    return (tool.execute || tool.run)(args, { agent: { id: SESSION } })
+    // Рабочий каталог задаём явно: инструменты пишут файлы только в него,
+    // а тест не должен мусорить в каталоге репозитория.
+    return (tool.execute || tool.run)(args, {
+      agent: { id: SESSION, session: { header: { cwd: WORKSPACE } } },
+    })
   }
 
   return {
@@ -230,4 +246,82 @@ test('browser_tabs показывает id вкладки — иначе tabId �
   const out = await r.call('browser_tabs')
   assert.match(out, /Вкладок: 1/)
   assert.match(out, /\[tab-1\]/, `ответ: ${out}`)
+})
+
+test('browser_download берёт файл у страницы, когда та может его прочитать', async (t) => {
+  const payload = Buffer.from('содержимое файла', 'utf8').toString('base64')
+  const r = await rig({ download: () => ({ value: { ok: true, base64: payload, mime: 'text/plain' } }) })
+  t.after(() => r.stop())
+  const out = await r.call('browser_download', { url: 'https://example.com/file.txt' })
+  assert.match(out, /Скачано:/)
+  assert.doesNotMatch(out, /Источник: хост/, 'хостовый путь не должен включаться без нужды')
+  const written = readFileSync(join(WORKSPACE, 'file.txt'), 'utf8')
+  assert.equal(written, 'содержимое файла')
+})
+
+test('browser_download не ходит хостовым путём на локальные адреса', async (t) => {
+  // Страница «не смогла» — значит включился бы запасной путь через хост.
+  // На localhost он запрещён: иначе агент обошёл бы запрет webview ходить
+  // на служебные адреса и вытащил бы ответ локального сервиса файлом.
+  const r = await rig({ download: () => ({ value: { ok: false, reason: 'сеть или CORS' } }) })
+  t.after(() => r.stop())
+  for (const url of [
+    'http://127.0.0.1:9/secret',
+    'http://localhost:9/secret',
+    'http://192.168.1.1/secret',
+    'http://10.0.0.5/secret',
+    'http://169.254.169.254/latest/meta-data',
+  ]) {
+    const out = await r.call('browser_download', { url })
+    assert.match(out, /Скачать не удалось/, `адрес ${url}: ${out}`)
+    assert.match(out, /локальные адреса/, `адрес ${url}: ${out}`)
+  }
+})
+
+test('browser_download отказывает не-http схеме на хостовом пути', async (t) => {
+  const r = await rig({ download: () => ({ value: { ok: false, reason: 'сеть или CORS' } }) })
+  t.after(() => r.stop())
+  const out = await r.call('browser_download', { url: 'file:///C:/Windows/win.ini' })
+  assert.match(out, /Скачать не удалось/)
+  assert.match(out, /http и https/)
+})
+
+test('browser_screenshot повторяет съёмку, если вкладка только что вышла на экран', async (t) => {
+  // Первые два вызова — «не отрисована», третий отдаёт картинку: так ведёт
+  // себя Chromium сразу после browser_reveal.
+  let attempt = 0
+  const png = Buffer.from('fake-png-bytes').toString('base64')
+  const r = await rig({
+    screenshot: () => {
+      attempt += 1
+      return attempt <= 2 ? { value: { ok: false, hidden: true } } : { dataUrl: `data:image/png;base64,${png}` }
+    },
+  })
+  t.after(() => r.stop())
+  const out = await r.call('browser_screenshot', { path: 'retry.png' })
+  assert.match(out, /Скриншот сохранён/)
+  assert.equal(attempt, 3, 'должно быть три попытки: две неудачные и одна успешная')
+})
+
+test('browser_screenshot сдаётся и просит reveal, если вкладка так и не отрисовалась', async (t) => {
+  const r = await rig({ screenshot: () => ({ value: { ok: false, hidden: true } }) })
+  t.after(() => r.stop())
+  await assert.rejects(
+    () => r.call('browser_screenshot', {}),
+    (error) => {
+      assert.match(String(error.message), /browser_reveal/)
+      return true
+    },
+  )
+})
+
+test('browser_download идёт хостовым путём, если страница вернула пустой файл', async (t) => {
+  // Страница «успешно» скачала ноль байт — раньше это записалось бы пустым
+  // файлом. Теперь включается хостовый путь; адрес локальный, поэтому он
+  // отказывает сразу и без сети — по отказу видно, что запасной путь включился.
+  const r = await rig({ download: () => ({ value: { ok: true, base64: '', mime: 'image/jpeg' } }) })
+  t.after(() => r.stop())
+  const out = await r.call('browser_download', { url: 'http://127.0.0.1:9/empty.bin' })
+  assert.match(out, /Скачать не удалось/)
+  assert.match(out, /локальные адреса/)
 })
