@@ -60,18 +60,54 @@
 
 ## Установка
 
-### Способ 1: из списка плагинов (рекомендуется)
+### Способ 1: из npm (рекомендуется)
 
-1. Откройте боковую панель DSH → **Plugins**.
-2. Нажмите **Add plugin** и вставьте адрес репозитория:
+```powershell
+$Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
+& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser"
+```
 
-   ```
-   https://github.com/d3d-root/dsh-plugin-agent-browser
-   ```
+Затем **полностью перезапустите DSH** — выйдите из приложения и запустите заново.
 
-   Можно указать и **абсолютный путь** к скачанной папке плагина.
-3. Включите плагин переключателем.
-4. **Полностью перезапустите DSH** — выйдите из приложения и запустите заново.
+Этот способ даёт **кнопку обновления** в списке плагинов: DSH сверяет версию с
+реестром и предлагает новую в один клик.
+
+Через интерфейс то же самое: **Plugins → Add plugin** → вставьте
+`dsh-plugin-agent-browser` → включите → перезапустите.
+
+### Способ 2: из GitHub
+
+Если не хотите зависеть от npm:
+
+```powershell
+& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
+```
+
+Или в интерфейсе: **Plugins → Add plugin** → вставьте адрес репозитория
+
+```
+https://github.com/d3d-root/dsh-plugin-agent-browser
+```
+
+Можно указать и **абсолютный путь** к скачанной папке плагина.
+
+У этого способа кнопки обновления нет — обновляться нужно той же командой
+(см. [Обновление](#обновление)).
+
+### Способ 3: вручную, если UI не подходит
+
+```powershell
+$Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
+
+# 1) подключить пакет в профиль (профиль обычно desktop)
+& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser"
+
+# 2) добавить "dsh-plugin-agent-browser" в dsh.profile.bundles
+#    файла %USERPROFILE%\.dsh\profiles\desktop\package.json
+#    (или просто включить плагин на странице Plugins)
+```
+
+Затем перезапустите DSH.
 
 Плагин объявляет `dsh.bundle.patch`, поэтому менеджер плагинов принимает его
 как бандл и сам добавляет в `dsh.profile.bundles` профиля.
@@ -81,21 +117,6 @@
 > сообщает об этом сам: через 7 секунд в правом нижнем углу появляется баннер с
 > кнопкой «Перезагрузить», а `browser_status` прямо пишет, что делать. Если
 > баннера нет — значит всё загрузилось.
-
-### Способ 2: вручную, если UI не подходит
-
-```powershell
-$Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
-
-# 1) подключить пакет в профиль (профиль обычно desktop)
-& $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
-
-# 2) добавить "dsh-plugin-agent-browser" в dsh.profile.bundles
-#    файла %USERPROFILE%\.dsh\profiles\desktop\package.json
-#    (или просто включить плагин на странице Plugins)
-```
-
-Затем перезапустите DSH.
 
 Подробная инструкция со всеми вариантами и разбором проблем —
 в [`docs/install.md`](docs/install.md).
@@ -144,6 +165,8 @@ $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\ds
 
 Подробности и откат — в [`docs/install.md`](docs/install.md#обновление),
 история версий — в [`CHANGELOG.md`](CHANGELOG.md).
+
+Пакет: https://www.npmjs.com/package/dsh-plugin-agent-browser
 
 ---
 
