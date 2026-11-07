@@ -15,6 +15,9 @@ node_modules/
 *.key
 *.pem
 
+# Сохранённые входы плагина — локальные данные, не для репозитория
+.session-store.json
+
 # Системный мусор
 .DS_Store
 Thumbs.db

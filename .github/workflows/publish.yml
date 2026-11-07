@@ -67,9 +67,9 @@ jobs:
             exit 1
           fi
 
-      # Тесты моста не требуют ни сети, ни DSH.
+      # Тесты не требуют ни сети, ни DSH.
       - name: Тесты
-        run: node --test --test-force-exit test/bridge.test.mjs test/plugin.test.mjs
+        run: node --test-force-exit test/all.test.mjs
 
       - name: Проверить синтаксис
         run: node --check lib/index.js && node --check lib/bridge.mjs

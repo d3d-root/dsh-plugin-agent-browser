@@ -31,7 +31,7 @@ jobs:
           node-version: "22"
 
       - name: Тесты
-        run: node --test --test-force-exit test/bridge.test.mjs test/plugin.test.mjs
+        run: node --test-force-exit test/all.test.mjs
 
       - name: Синтаксис
         run: |
