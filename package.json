@@ -48,7 +48,8 @@
   },
   "scripts": {
     "test": "node --test test/bridge.test.mjs",
-    "test:watch": "node --test --watch test/bridge.test.mjs"
+    "test:watch": "node --test --watch test/bridge.test.mjs",
+    "prepublishOnly": "node --test test/bridge.test.mjs"
   },
   "repository": {
     "type": "git",

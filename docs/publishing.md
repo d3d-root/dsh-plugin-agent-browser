@@ -137,15 +137,42 @@ npm pack --dry-run
 именем пакета. `github:d3d-root/...` этому условию не отвечает, поэтому
 `updatable: false`.
 
-Если обновления «в один клик» важны — публикуйте в npm. Порядок выхода новой
-версии тогда такой:
+Если обновления «в один клик» важны — публикуйте в npm.
+
+### Разовая настройка npm
+
+1. Зарегистрируйтесь на https://www.npmjs.com (если ещё нет аккаунта).
+2. Создайте токен: https://www.npmjs.com/settings/<ник>/tokens → **Generate New
+   Token** → тип **Automation**. Он нужен для публикации из CI без 2FA.
+3. Положите токен в секреты GitHub: **Settings → Secrets and variables →
+   Actions → New repository secret**, имя `NPM_TOKEN`.
+
+Всё остальное уже готово: файл `.github/workflows/publish.yml` в репозитории.
+
+### Первая публикация
+
+Проще всего локально — чтобы сразу проверить, что имя свободно и пакет
+собирается:
 
 ```powershell
-# 1) поднять версию в package.json (и записать в CHANGELOG.md)
+cd dsh-plugin-agent-browser
+& "C:\Program Files\nodejs\npm.cmd" login      # один раз, откроется браузер
+& "C:\Program Files\nodejs\npm.cmd" pack --dry-run   # что попадёт в архив
+& "C:\Program Files\nodejs\npm.cmd" publish --access public
+```
+
+### Дальше — автоматически по тегу
+
+```powershell
+# 1) поднять версию в package.json и дописать раздел в CHANGELOG.md
 # 2) закоммитить и запушить
 git add -A; git commit -m "1.0.3: …"; git push
-# 3) опубликовать
-npm publish
+# 3) поставить тег — workflow сам проверит тесты и опубликует
+git tag v1.0.3; git push origin v1.0.3
 ```
+
+Workflow сверит тег с версией в `package.json`, прогонит тесты и вызовет
+`npm publish`. Если версия не совпала с тегом — упадёт до публикации, а не
+после.
 
 Дальше у пользователей появится кнопка обновления.

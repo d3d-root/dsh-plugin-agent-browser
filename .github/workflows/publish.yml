@@ -1,0 +1,64 @@
+# Публикация в npm по тегу.
+#
+# Зачем: DSH показывает кнопку «Обновить» только для пакетов, установленных из
+# реестра. Публикация вручную — это каждый раз «поднять версию, закоммитить,
+# npm login, npm publish». Здесь достаточно поставить тег: версия берётся из
+# package.json, а токен — из секрета репозитория.
+#
+# Настройка (один раз):
+#   1. Получите токен: https://www.npmjs.com/settings/<ник>/tokens
+#      тип «Automation» — он не требует 2FA при публикации из CI.
+#   2. GitHub → Settings → Secrets and variables → Actions → New repository
+#      secret: имя NPM_TOKEN, значение — токен.
+#
+# Выпуск новой версии:
+#   1. Поднимите "version" в package.json и допишите раздел в CHANGELOG.md.
+#   2. git commit && git push
+#   3. git tag v1.0.3 && git push origin v1.0.3
+#
+# Проверка, что тег совпадает с версией в манифесте, стоит до публикации:
+# иначе npm отвергнет загрузку уже после всех проверок.
+
+name: publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      # Версия в теге и в package.json должна совпадать.
+      - name: Проверить совпадение тега и версии
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "package.json: $PKG_VERSION, тег: $TAG_VERSION"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Тег $GITHUB_REF_NAME не совпадает с версией $PKG_VERSION"
+            exit 1
+          fi
+
+      # Тесты моста не требуют ни сети, ни DSH.
+      - name: Тесты
+        run: node --test test/bridge.test.mjs
+
+      - name: Проверить, что бандл собирается
+        run: node --check lib/index.js && node --check lib/bridge.mjs
+
+      - name: Публикация
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -116,15 +116,32 @@ Get-Content "$env:TEMP\dsh-agent-browser.log" -Tail 5
 
 Версию видно в `browser_status` (строка «Версия плагина») и в журнале.
 
-Для установки из GitHub кнопки «Обновить» в интерфейсе нет — DSH показывает её
-только для пакетов из npm. Обновление — одной командой, затем перезапуск DSH:
+Есть два способа установки, и обновляются они по-разному:
+
+| Как поставлен | Как обновляется |
+|---|---|
+| из **npm** — `dsh plugin add dsh-plugin-agent-browser` | кнопка в списке плагинов, в один клик |
+| из **GitHub** — `dsh plugin add github:d3d-root/…` | командой ниже |
+
+Кнопку обновления DSH показывает только для пакетов из реестра: он сверяет
+версию с npm и предлагает новую. Это не «молча поставилось», а «при открытии
+списка плагинов видно, что вышла новая версия». После обновления нужен
+перезапуск приложения.
+
+Для установки из GitHub — одна команда, она переустановит плагин с последнего
+коммита и покажет смену версии:
 
 ```powershell
 $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd"
 & $Dsh plugin --profile desktop add "github:d3d-root/dsh-plugin-agent-browser"
 ```
 
-Команда сама переустановит плагин с последнего коммита и покажет смену версии.
+**Переход с GitHub на npm** — одна переустановка, после неё появится кнопка:
+
+```powershell
+& $Dsh plugin --profile desktop add "dsh-plugin-agent-browser"
+```
+
 Подробности и откат — в [`docs/install.md`](docs/install.md#обновление),
 история версий — в [`CHANGELOG.md`](CHANGELOG.md).
 
