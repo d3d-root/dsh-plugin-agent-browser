@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-agent-browser",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "A real browser in the DeepSeek Harness right sidebar вЂ” one per chat, driven by agent tools",
   "keywords": [
     "dsh",
