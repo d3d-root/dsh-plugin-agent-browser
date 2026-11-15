@@ -76,6 +76,45 @@ async function rig(answers, options = {}) {
     }
   })()
 
+  // Окно DSH: отвечает на управляющие команды и записывает их.
+  const controls = []
+  let clientId = ''
+  const clientLoop = (async () => {
+    while (running) {
+      let command
+      try {
+        if (!clientId) {
+          const hello = await fetch(`${transport.base}/client/hello`, {
+            method: 'POST',
+            headers,
+            body: '{}',
+          })
+          clientId = (await hello.json()).clientId
+          continue
+        }
+        const response = await fetch(`${transport.base}/client/poll?client=${clientId}`, { headers })
+        command = await response.json()
+      } catch {
+        return
+      }
+      if (!command || command.id === undefined) continue
+      controls.push(command)
+      try {
+        await fetch(`${transport.base}/client/reply`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            id: command.id,
+            ok: true,
+            result: { opened: true, revealed: 'tab-1', shown: true },
+          }),
+        })
+      } catch {
+        return
+      }
+    }
+  })()
+
   // Мост и состояние переживают горячую перезагрузку через globalThis —
   // подставляем готовые, чтобы плагин не поднимал второй транспорт.
   globalThis.__dshAgentBrowserBridge = bridge
@@ -128,6 +167,7 @@ async function rig(answers, options = {}) {
   return {
     tools: registered,
     call,
+    controls,
     async stop() {
       running = false
       await transport.close()
@@ -333,6 +373,36 @@ test('browser_download идёт хостовым путём, если стран
   const out = await r.call('browser_download', { url: 'http://127.0.0.1:9/empty.bin' })
   assert.match(out, /Скачать не удалось/)
   assert.match(out, /локальные адреса/)
+})
+
+test('browser_open не просит переключить чат', async (t) => {
+  const r = await rig({})
+  t.after(() => r.stop())
+  await r.call('browser_open')
+  // Панель в стенде уже открыта, поэтому уходит reveal, а не open: важно не
+  // имя команды, а то, что ни одна не требует переключения экрана.
+  assert.ok(r.controls.length > 0, 'должна уйти управляющая команда')
+  for (const command of r.controls) {
+    assert.notEqual(command.focus, true, `команда ${command.type} просит переключить чат`)
+  }
+})
+
+test('browser_reveal не просит переключить чат', async (t) => {
+  const r = await rig({})
+  t.after(() => r.stop())
+  await r.call('browser_reveal')
+  const reveal = r.controls.find((c) => c.type === 'reveal')
+  assert.ok(reveal, 'должна уйти команда показа')
+  assert.equal(reveal.focus, false)
+})
+
+test('browser_close не просит переключить чат', async (t) => {
+  const r = await rig({})
+  t.after(() => r.stop())
+  await r.call('browser_close')
+  const close = r.controls.find((c) => c.type === 'close')
+  assert.ok(close, 'должна уйти команда закрытия')
+  assert.notEqual(close.focus, true)
 })
 
 test('язык ответов берётся из настройки, а не из локали машины', async (t) => {
