@@ -547,6 +547,58 @@ test('свой адаптер хранилища подменяет память
   }
 })
 
+// --- Живой клиент не должен считаться мёртвым ---
+
+test('клиент в длинном опросе считается живым', async () => {
+  const bridge = createBridge()
+  const hello = await bridge.handle('POST', '/client/hello', new URLSearchParams(), {})
+  const clientId = hello.body.clientId
+
+  // Начинаем длинный опрос: он висит до команды или до таймаута.
+  const polling = bridge.handle('GET', '/client/poll', new URLSearchParams({ client: clientId }), {})
+  await new Promise((resolve) => setTimeout(resolve, 30))
+
+  // Ключевой момент: опрос длится, и lastSeen давно не обновлялся. Без учёта
+  // флага «polling» такой клиент считался бы мёртвым — ровно это и ломало
+  // работу сразу после перезапуска приложения.
+  const client = bridge.clients.find((c) => c.id === clientId)
+  client.lastSeen = Date.now() - 60_000
+
+  // Команда должна найти живого клиента, хотя lastSeen обновился только в
+  // начале опроса.
+  const control = bridge.handle('POST', '/control', new URLSearchParams(), {
+    type: 'open',
+    sessionId: 's1',
+  })
+
+  // Опрос получает команду и отвечает на неё.
+  const command = await polling
+  assert.equal(command.body.type, 'open')
+  await bridge.handle('POST', '/client/reply', new URLSearchParams(), {
+    id: command.body.id,
+    ok: true,
+    result: { opened: true },
+  })
+
+  const answer = await control
+  assert.equal(answer.body.ok, true)
+})
+
+test('клиент с истёкшим опросом перестаёт считаться живым', async () => {
+  const bridge = createBridge()
+  const hello = await bridge.handle('POST', '/client/hello', new URLSearchParams(), {})
+  const client = bridge.clients.find((c) => c.id === hello.body.clientId)
+  // Опрос закончился давно, новый не начался: клиент действительно пропал.
+  client.polling = false
+  client.lastSeen = Date.now() - 120_000
+  const { body } = await bridge.handle('POST', '/control', new URLSearchParams(), {
+    type: 'open',
+    sessionId: 's1',
+  })
+  assert.equal(body.ok, false)
+  assert.equal(body.code, 'no-client')
+})
+
 // --- Уборка неиспользуемых вкладок ---
 //
 // Вкладка — отдельный процесс Chromium, поэтому без уборки они копятся.
