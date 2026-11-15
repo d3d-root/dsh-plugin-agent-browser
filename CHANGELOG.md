@@ -5,6 +5,48 @@
 
 ---
 
+## [2.2.0] — 2026-11-15
+
+Финальная вычитка: прогнал все 36 инструментов вживую на настоящих сайтах.
+
+### Исправлено
+
+- **`browser_download` сохранял файл под чужим расширением.** Скачал SVG с
+  Hacker News под именем `logo.png` — файл открывался как битый, и причина была
+  неясна. Сервер не всегда присылает Content-Type, а при скачивании через
+  страницу он может потеряться. Теперь тип определяется по первым байтам
+  (PNG, JPEG, GIF, WebP, PDF, ZIP, SVG, JSON), и если запрошенное расширение не
+  совпадает с настоящим, инструмент прямо пишет об этом и подсказывает верное
+  имя.
+
+### Добавлено
+
+- Модуль `lib/file-type.mjs` — определение типа по содержимому. Вынесен из
+  `index.js`, чтобы его можно было проверить тестами без запуска плагина.
+- Тест упаковки: проверяет, что каждый модуль из `lib/` и каждая цель
+  `exports` попали в `files`. Такой пропуск не виден локально (файл лежит
+  рядом), но ломает установку у пользователя — теперь ловится сразу.
+- Тесты типов файлов: 10 штук.
+
+### Проверено вживую
+
+Все инструменты на настоящих страницах (Hacker News, Arkanum Data):
+
+`browser_open`, `browser_navigate`, `browser_read`, `browser_extract`,
+`browser_find_all`, `browser_click_index`, `browser_page_state`,
+`browser_find_in_page`, `browser_zoom`, `browser_scroll`, `browser_back`,
+`browser_forward`, `browser_wait`, `browser_screenshot` (обычный и полный),
+`browser_pdf`, `browser_download`, `browser_upload`, `browser_save_session`,
+`browser_restore_session`, `browser_trace`, `browser_tabs`,
+`browser_close_idle`, `browser_reveal`, `browser_status`.
+
+Файлы проверены по сигнатурам: PDF начинается с `%PDF-1.4`, PNG — с
+`89504e470d0a1a0a`.
+
+Тестов: **121**.
+
+---
+
 ## [2.1.7] — 2026-11-15
 
 Проверка двумя агентами на 2.1.6: всё работает, но оба заметили один изъян.

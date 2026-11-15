@@ -212,8 +212,8 @@ $Dsh = "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\ds
 | `browser_find_all` | пронумерованный список элементов по селектору или тексту |
 | `browser_click_index` | клик по номеру из `browser_find_all` |
 | `browser_extract` | массив объектов по CSS-селекторам — таблицы и карточки |
+| `browser_download` | скачать файл в рабочий каталог; тип определяется по содержимому |
 | `browser_upload` | прикрепить файлы в `input[type=file]` |
-| `browser_download` | скачать файл в рабочий каталог чата |
 
 ### Капчи и картинки
 
