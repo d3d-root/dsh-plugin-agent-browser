@@ -547,6 +547,63 @@ test('свой адаптер хранилища подменяет память
   }
 })
 
+// --- Панели разных чатов с одинаковым tabId ---
+
+test('две панели с одинаковым tabId в разных чатах живут раздельно', async () => {
+  const bridge = createBridge()
+  // У DSH счётчик вкладок свой на каждую сессию, поэтому tab2 есть в обоих.
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'чат-А::tab2',
+    sessionId: 'чат-А',
+    tabId: 'tab2',
+    visible: true,
+  })
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'чат-Б::tab2',
+    sessionId: 'чат-Б',
+    tabId: 'tab2',
+    visible: true,
+  })
+  assert.equal(bridge.panels.length, 2, 'обе панели должны существовать')
+  const sessions = bridge.panels.map((p) => p.sessionId).sort()
+  assert.deepEqual(sessions, ['чат-А', 'чат-Б'])
+})
+
+test('команда уходит только в панель своего чата', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'чат-А::tab2',
+    sessionId: 'чат-А',
+    tabId: 'tab2',
+    visible: true,
+  })
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'чат-Б::tab2',
+    sessionId: 'чат-Б',
+    tabId: 'tab2',
+    visible: false,
+  })
+  const pending = bridge.handle('POST', '/cmd', new URLSearchParams(), {
+    sessionId: 'чат-Б',
+    type: 'url',
+  })
+  await new Promise((resolve) => setTimeout(resolve, 20))
+
+  // Панель чата А не должна получить чужую команду.
+  const forA = await bridge.handle('GET', '/panel/poll', new URLSearchParams({ panel: 'чат-А::tab2' }), {})
+  assert.equal(forA.body.type, undefined, 'панель чата А не должна получить команду чата Б')
+
+  const forB = await bridge.handle('GET', '/panel/poll', new URLSearchParams({ panel: 'чат-Б::tab2' }), {})
+  assert.equal(forB.body.type, 'url')
+  await bridge.handle('POST', '/panel/reply', new URLSearchParams(), {
+    id: forB.body.id,
+    ok: true,
+    result: { url: 'https://example.com' },
+  })
+  const answer = await pending
+  assert.equal(answer.body.ok, true)
+})
+
 // --- Вкладка закреплена за своим чатом ---
 
 test('панель не может переехать в другой чат', async () => {
