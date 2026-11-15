@@ -547,6 +547,76 @@ test('свой адаптер хранилища подменяет память
   }
 })
 
+// --- Адресация вкладки с припиской чата ---
+
+test('tabId с припиской чата находит нужную панель', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'чат-А::tab2',
+    sessionId: 'чат-А',
+    tabId: 'tab2',
+    visible: true,
+  })
+  const pending = bridge.handle('POST', '/cmd', new URLSearchParams(), {
+    sessionId: 'чат-А',
+    tab: 'tab2@чат-А',
+    type: 'url',
+  })
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  const command = (await bridge.handle('GET', '/panel/poll', new URLSearchParams({ panel: 'чат-А::tab2' }), {}))
+    .body
+  assert.equal(command.type, 'url')
+  await bridge.handle('POST', '/panel/reply', new URLSearchParams(), {
+    id: command.id,
+    ok: true,
+    result: { url: 'https://example.com' },
+  })
+  const answer = await pending
+  assert.equal(answer.body.ok, true)
+})
+
+test('простой tabId по-прежнему работает', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'чат-А::tab2',
+    sessionId: 'чат-А',
+    tabId: 'tab2',
+    visible: true,
+  })
+  const pending = bridge.handle('POST', '/cmd', new URLSearchParams(), {
+    sessionId: 'чат-А',
+    tab: 'tab2',
+    type: 'url',
+  })
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  const command = (await bridge.handle('GET', '/panel/poll', new URLSearchParams({ panel: 'чат-А::tab2' }), {}))
+    .body
+  assert.equal(command.type, 'url')
+  await bridge.handle('POST', '/panel/reply', new URLSearchParams(), {
+    id: command.id,
+    ok: true,
+    result: { url: 'https://example.com' },
+  })
+  const answer = await pending
+  assert.equal(answer.body.ok, true)
+})
+
+test('чужая вкладка с припиской не находится', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'чат-А::tab2',
+    sessionId: 'чат-А',
+    tabId: 'tab2',
+    visible: true,
+  })
+  const { body } = await bridge.handle('POST', '/cmd', new URLSearchParams(), {
+    sessionId: 'чат-Б',
+    tab: 'tab2@чат-А',
+    type: 'url',
+  })
+  assert.equal(body.ok, false)
+})
+
 // --- Панели разных чатов с одинаковым tabId ---
 
 test('две панели с одинаковым tabId в разных чатах живут раздельно', async () => {
