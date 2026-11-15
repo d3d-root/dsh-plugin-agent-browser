@@ -27,6 +27,7 @@
     "lib/bridge.mjs",
     "lib/download.mjs",
     "lib/file-type.mjs",
+    "scripts/fix-dsh-start.ps1",
     "cordis.patch.yml",
     "docs/install.md",
     "docs/architecture.md",

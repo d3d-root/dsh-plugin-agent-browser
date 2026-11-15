@@ -8,7 +8,16 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const FILES = ['lib/client.js', 'lib/index.js', 'lib/bridge.mjs', 'CHANGELOG.md', 'README.md', 'cordis.patch.yml']
+const FILES = [
+  'lib/client.js',
+  'lib/index.js',
+  'lib/bridge.mjs',
+  'lib/file-type.mjs',
+  'scripts/fix-dsh-start.ps1',
+  'CHANGELOG.md',
+  'README.md',
+  'cordis.patch.yml',
+]
 
 /** Признак двойного перекодирования: кириллица, прочитанная как Latin-1. */
 const MOJIBAKE = /Р[РС][а-яА-Я]|вЂ|пїЅ/
@@ -20,6 +29,15 @@ test('файлы проекта не перекодированы', () => {
     if (MOJIBAKE.test(text)) broken.push(file)
   }
   assert.deepEqual(broken, [], `испорчена кодировка: ${broken.join(', ')}`)
+})
+
+test('PowerShell-скрипт сохранён с BOM', () => {
+  // Windows PowerShell 5.1 читает файл без BOM как ANSI: русский текст
+  // превращается в мусор, и скрипт не запускается с ошибкой разбора.
+  const bytes = readFileSync('scripts/fix-dsh-start.ps1')
+  assert.equal(bytes[0], 0xef, 'нет BOM: PowerShell 5.1 не прочитает файл')
+  assert.equal(bytes[1], 0xbb)
+  assert.equal(bytes[2], 0xbf)
 })
 
 test('русские тексты на месте', () => {
