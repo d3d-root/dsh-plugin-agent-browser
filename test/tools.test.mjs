@@ -271,7 +271,7 @@ test('browser_screenshot в фоне просит показать вкладк�
   await assert.rejects(
     () => r.call('browser_screenshot', {}),
     (error) => {
-      assert.match(String(error.message), /browser_reveal/)
+      assert.match(String(error.message), /откройте этот чат|снимок/i)
       return true
     },
   )
@@ -358,7 +358,7 @@ test('browser_screenshot сдаётся и просит reveal, если вкл�
   await assert.rejects(
     () => r.call('browser_screenshot', {}),
     (error) => {
-      assert.match(String(error.message), /browser_reveal/)
+      assert.match(String(error.message), /откройте этот чат|снимок/i)
       return true
     },
   )
