@@ -32,7 +32,10 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  # contents: write нужен, чтобы записать отчёт о публикации в релиз:
+  # журнал шага виден только владельцу репозитория, а релиз читается кем
+  # угодно — так причину сбоя можно увидеть без доступа к настройкам.
+  contents: write
   # id-token нужен для OIDC: без него npm не сможет подтвердить, что публикует
   # именно этот workflow этого репозитория.
   id-token: write
@@ -77,5 +80,64 @@ jobs:
       # Токена нет: npm получает OIDC-токен от GitHub сам.
       # --provenance добавляет подписанное подтверждение сборки: пользователь
       # видит, из какого коммита и какого workflow собран пакет.
+      #
+      # Вывод сохраняем в файл: если npm ответит «успешно», а версии в реестре
+      # не будет, без этого текста причину не узнать (журнал шага читает только
+      # владелец репозитория). Шаг намеренно не падает здесь — падать должен
+      # шаг проверки ниже, чтобы отчёт успел записаться.
       - name: Публикация
-        run: npm publish --access public --provenance
+        run: |
+          set +e
+          npm publish --access public --provenance > publish.log 2>&1
+          code=$?
+          echo "код выхода npm publish: $code" >> publish.log
+          cat publish.log
+          exit 0
+
+      # Главная проверка: npm мог ответить успехом, но не опубликовать.
+      # Смотрим в реестр — там ли версия.
+      - name: Проверить, что версия в реестре
+        id: verify
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "Проверяю dsh-plugin-agent-browser@$VERSION в реестре"
+          for i in 1 2 3 4 5 6; do
+            if npm view "dsh-plugin-agent-browser@$VERSION" version > /dev/null 2>&1; then
+              echo "Версия $VERSION опубликована"
+              echo "published=yes" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "попытка $i: пока нет, жду 15 секунд"
+            sleep 15
+          done
+          echo "published=no" >> "$GITHUB_OUTPUT"
+          echo "::error::Версия $VERSION НЕ появилась в реестре — смотри отчёт в релизе"
+          exit 1
+
+      # Отчёт о публикации. Пишется всегда — и при успехе, и при сбое.
+      - name: Записать отчёт в релиз
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISHED: ${{ steps.verify.outputs.published }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          {
+            echo "## Публикация $VERSION"
+            echo ""
+            echo "Версия в реестре: ${PUBLISHED:-неизвестно}"
+            echo ""
+            echo '```'
+            cat publish.log 2>/dev/null || echo "файла с выводом нет"
+            echo '```'
+            echo ""
+            echo "Версии в реестре сейчас:"
+            echo ""
+            echo '```'
+            npm view dsh-plugin-agent-browser versions 2>&1 | tail -20
+            echo '```'
+          } > report.md
+          gh release view "v$VERSION" > /dev/null 2>&1 || \
+            gh release create "v$VERSION" --title "$VERSION" --notes "Публикация в npm" > /dev/null
+          gh release edit "v$VERSION" --notes-file report.md > /dev/null
+          echo "отчёт записан в релиз v$VERSION"
