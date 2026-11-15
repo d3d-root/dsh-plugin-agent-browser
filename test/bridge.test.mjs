@@ -643,3 +643,117 @@ test('команда закрытия с quiet доходит до панели 
   assert.equal(answer.body.ok, true)
   assert.equal(answer.body.result.closed, 1)
 })
+
+// --- Чужая вкладка не должна получать команду ---
+//
+// При нескольких сессиях команда без определённой сессии раньше уходила в
+// первую попавшуюся панель, то есть в браузер другого чата. Молчаливая
+// подмена хуже отказа: агент управлял бы чужим браузером.
+
+test('команда без сессии не уходит в чужую вкладку', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p-other',
+    sessionId: 'чужая',
+    tabId: 't-other',
+    visible: true,
+  })
+  const { body } = await bridge.handle('POST', '/cmd', new URLSearchParams(), { type: 'url' })
+  assert.equal(body.ok, false)
+  assert.equal(body.code, 'no-session')
+  assert.match(body.error, /другого чата/)
+})
+
+test('команда без сессии не будит чужую панель', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p-other',
+    sessionId: 'чужая',
+    tabId: 't-other',
+    visible: true,
+  })
+  const before = bridge.inflightCount
+  await bridge.handle('POST', '/cmd', new URLSearchParams(), { type: 'url' })
+  // Ничего не отправлено, значит и ожиданий не появилось.
+  assert.equal(bridge.inflightCount, before)
+})
+
+test('своя сессия по-прежнему получает команду', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p-mine',
+    sessionId: 'моя',
+    tabId: 't-mine',
+    visible: false,
+  })
+  const pending = bridge.handle('POST', '/cmd', new URLSearchParams(), {
+    sessionId: 'моя',
+    type: 'url',
+  })
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  const command = (await bridge.handle('GET', '/panel/poll', new URLSearchParams({ panel: 'p-mine' }), {})).body
+  assert.equal(command.type, 'url')
+  await bridge.handle('POST', '/panel/reply', new URLSearchParams(), {
+    id: command.id,
+    ok: true,
+    result: { url: 'https://example.com' },
+  })
+  const answer = await pending
+  assert.equal(answer.body.ok, true)
+})
+
+// --- Мёртвый клиент не должен задерживать команду ---
+//
+// Клиент, потерявший связь, регистрируется заново под новым id. Старая запись
+// никогда не ответит, и раньше команда ждала её до общего таймаута — в живом
+// окне это выглядело как «страница DSH не ответила» на десятки секунд.
+
+test('команда не уходит клиенту, который давно не опрашивал мост', async () => {
+  const bridge = createBridge()
+  const hello = await bridge.handle('POST', '/client/hello', new URLSearchParams(), {})
+  const clientId = hello.body.clientId
+  // Имитируем отключившийся клиент: его давно никто не видел.
+  const client = bridge.clients.find((c) => c.id === clientId)
+  client.lastSeen = Date.now() - 60_000
+  const { body } = await bridge.handle('POST', '/control', new URLSearchParams(), {
+    type: 'open',
+    sessionId: 's1',
+  })
+  assert.equal(body.ok, false)
+  assert.equal(body.code, 'no-client')
+})
+
+test('живой клиент получает управляющую команду', async () => {
+  const bridge = createBridge()
+  const hello = await bridge.handle('POST', '/client/hello', new URLSearchParams(), {})
+  const clientId = hello.body.clientId
+  const pending = bridge.handle('POST', '/control', new URLSearchParams(), {
+    type: 'open',
+    sessionId: 's1',
+  })
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  const command = (await bridge.handle('GET', '/client/poll', new URLSearchParams({ client: clientId }), {}))
+    .body
+  assert.equal(command.type, 'open')
+  await bridge.handle('POST', '/client/reply', new URLSearchParams(), {
+    id: command.id,
+    ok: true,
+    result: { opened: true },
+  })
+  const answer = await pending
+  assert.equal(answer.body.ok, true)
+  assert.equal(answer.body.result.opened, true)
+})
+
+test('новая регистрация клиента убирает давно молчащие записи', async () => {
+  const bridge = createBridge()
+  const first = await bridge.handle('POST', '/client/hello', new URLSearchParams(), {})
+  const stale = bridge.clients.find((c) => c.id === first.body.clientId)
+  stale.lastSeen = Date.now() - 60_000
+  await bridge.handle('POST', '/client/hello', new URLSearchParams(), {})
+  assert.equal(
+    bridge.clients.some((c) => c.id === first.body.clientId),
+    false,
+    'старая запись должна исчезнуть',
+  )
+})
