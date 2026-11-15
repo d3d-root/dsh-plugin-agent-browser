@@ -547,6 +547,69 @@ test('свой адаптер хранилища подменяет память
   }
 })
 
+// --- Вкладка закреплена за своим чатом ---
+
+test('панель не может переехать в другой чат', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p1',
+    sessionId: 'чат-А',
+    tabId: 't1',
+    visible: true,
+  })
+  // Вторая регистрация называет другой чат — это ошибка определения владельца.
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p1',
+    sessionId: 'чат-Б',
+    tabId: 't1',
+    visible: true,
+  })
+  const panel = bridge.panels.find((p) => p.id === 'p1')
+  assert.equal(panel.sessionId, 'чат-А', 'вкладка должна остаться за первым чатом')
+})
+
+test('команда чата Б не попадает в панель чата А', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p1',
+    sessionId: 'чат-А',
+    tabId: 't1',
+    visible: true,
+  })
+  // Панель ошибочно назвалась чатом Б.
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p1',
+    sessionId: 'чат-Б',
+    tabId: 't1',
+    visible: true,
+  })
+  const { body } = await bridge.handle('POST', '/cmd', new URLSearchParams(), {
+    sessionId: 'чат-Б',
+    type: 'url',
+  })
+  assert.equal(body.ok, false)
+  assert.equal(body.code, 'no-panel')
+})
+
+test('видимость и tabId обновляются при повторной регистрации', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p1',
+    sessionId: 'чат-А',
+    tabId: 't1',
+    visible: true,
+  })
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p1',
+    sessionId: 'чат-А',
+    tabId: 't2',
+    visible: false,
+  })
+  const panel = bridge.panels.find((p) => p.id === 'p1')
+  assert.equal(panel.visible, false)
+  assert.equal(panel.tabId, 't2')
+})
+
 // --- Живой клиент не должен считаться мёртвым ---
 
 test('клиент в длинном опросе считается живым', async () => {
