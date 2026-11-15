@@ -211,11 +211,22 @@ test('длинный опрос панели ждёт команду и полу
   assert.equal((await sending).body.result.url, 'u')
 })
 
-test('опрос неизвестной панели не подвешивает запрос', async () => {
+test('опрос неизвестной панели отвечает сразу и просит hello заново', async () => {
   const bridge = createBridge()
   const started = Date.now()
   const { body } = await bridge.handle('GET', '/panel/poll', new URLSearchParams({ panel: 'нет' }), {})
-  assert.deepEqual(body, {})
+  // Явный сигнал вместо пустого объекта: мост перезапустился и не помнит
+  // панель, поэтому панель должна зарегистрироваться заново, а не ждать
+  // вхолостую, пока инструменты сообщают «плагин загружен наполовину».
+  assert.deepEqual(body, { code: 'unknown-panel' })
+  assert.ok(Date.now() - started < 1000)
+})
+
+test('опрос неизвестного клиента просит зарегистрироваться заново', async () => {
+  const bridge = createBridge()
+  const started = Date.now()
+  const { body } = await bridge.handle('GET', '/client/poll', new URLSearchParams({ client: 'нет' }), {})
+  assert.deepEqual(body, { code: 'unknown-client' })
   assert.ok(Date.now() - started < 1000)
 })
 
@@ -534,4 +545,101 @@ test('свой адаптер хранилища подменяет память
   } finally {
     await transport.close()
   }
+})
+
+// --- Уборка неиспользуемых вкладок ---
+//
+// Вкладка — отдельный процесс Chromium, поэтому без уборки они копятся.
+// Проверяем выбор жертв: по простою и по лимиту.
+
+test('stalePanels не трогает свежие вкладки', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p1',
+    sessionId: 's1',
+    tabId: 't1',
+    visible: true,
+  })
+  const stale = bridge.stalePanels({ idleMs: 60_000 })
+  assert.equal(stale.length, 0)
+})
+
+test('stalePanels отдаёт вкладку, которая давно не получала команд', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p1',
+    sessionId: 's1',
+    tabId: 't1',
+    visible: true,
+  })
+  // Сдвигаем активность в прошлое: имитируем «команд не было час».
+  const panel = bridge.panels.find((p) => p.id === 'p1')
+  panel.lastCommand = Date.now() - 3_600_000
+  panel.lastSeen = Date.now() - 3_600_000
+  const stale = bridge.stalePanels({ idleMs: 60_000 })
+  assert.equal(stale.length, 1)
+  assert.equal(stale[0].sessionId, 's1')
+  assert.ok(stale[0].idleMs >= 3_600_000)
+})
+
+test('stalePanels соблюдает лимит вкладок, закрывая самые старые', async () => {
+  const bridge = createBridge()
+  for (let i = 1; i <= 4; i++) {
+    await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+      panelId: `p${i}`,
+      sessionId: `s${i}`,
+      tabId: `t${i}`,
+      visible: false,
+    })
+  }
+  // Делаем так, чтобы s1 был самым старым, s4 — самым свежим.
+  const now = Date.now()
+  bridge.panels.forEach((panel, index) => {
+    panel.lastCommand = now - (4 - Number(panel.id.startsWith('p') ? panel.id.slice(1) : 0)) * 60_000
+    panel.lastSeen = panel.lastCommand
+  })
+  const stale = bridge.stalePanels({ maxSessions: 2 })
+  assert.equal(stale.length, 2)
+  // Закрываются самые старые: s1 и s2.
+  const closed = stale.map((s) => s.sessionId).sort()
+  assert.deepEqual(closed, ['s1', 's2'])
+})
+
+test('stalePanels без настроек ничего не закрывает', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p1',
+    sessionId: 's1',
+    tabId: 't1',
+    visible: true,
+  })
+  assert.equal(bridge.stalePanels({}).length, 0)
+})
+
+test('команда закрытия с quiet доходит до панели фоновой сессии', async () => {
+  const bridge = createBridge()
+  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+    panelId: 'p1',
+    sessionId: 's1',
+    tabId: 't1',
+    visible: false,
+  })
+  // Уборка не должна требовать видимости: вкладка в фоне, чат не переключается.
+  const pending = bridge.handle('POST', '/cmd', new URLSearchParams(), {
+    sessionId: 's1',
+    type: 'close',
+    quiet: true,
+  })
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  const command = (await bridge.handle('GET', '/panel/poll', new URLSearchParams({ panel: 'p1' }), {})).body
+  assert.equal(command.type, 'close')
+  assert.equal(command.quiet, true)
+  await bridge.handle('POST', '/panel/reply', new URLSearchParams(), {
+    id: command.id,
+    ok: true,
+    result: { closed: 1, sessionId: 's1' },
+  })
+  const answer = await pending
+  assert.equal(answer.body.ok, true)
+  assert.equal(answer.body.result.closed, 1)
 })
