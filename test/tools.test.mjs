@@ -42,12 +42,16 @@ async function rig(answers, options = {}) {
   const bridge = createBridge()
   const transport = await startLoopbackTransport(bridge, { token: TOKEN, basePath: '/dsh-agent-browser' })
 
-  await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
-    panelId: PANEL,
-    sessionId: SESSION,
-    tabId: 'tab-1',
-    visible: true,
-  })
+  // Панель по умолчанию уже открыта. `noPanel: true` имитирует чат, который
+  // ни разу не показывали: панели нет, и открыть её без переключения нельзя.
+  if (!options.noPanel) {
+    await bridge.handle('POST', '/panel/hello', new URLSearchParams(), {
+      panelId: PANEL,
+      sessionId: SESSION,
+      tabId: 'tab-1',
+      visible: true,
+    })
+  }
 
   // Панель отвечает в фоне: так же, как настоящая, длинным опросом.
   let running = true
@@ -99,15 +103,17 @@ async function rig(answers, options = {}) {
       }
       if (!command || command.id === undefined) continue
       controls.push(command)
+      // Ответ на управляющую команду можно переопределить: так проверяется
+      // отказ клиента открыть вкладку в чате, который ни разу не показывали.
+      const controlResult =
+        typeof options.controlReply === 'function'
+          ? options.controlReply(command)
+          : { opened: true, revealed: 'tab-1', shown: true }
       try {
         await fetch(`${transport.base}/client/reply`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({
-            id: command.id,
-            ok: true,
-            result: { opened: true, revealed: 'tab-1', shown: true },
-          }),
+          body: JSON.stringify({ id: command.id, ok: true, result: controlResult }),
         })
       } catch {
         return
@@ -403,6 +409,40 @@ test('browser_close не просит переключить чат', async (t) 
   const close = r.controls.find((c) => c.type === 'close')
   assert.ok(close, 'должна уйти команда закрытия')
   assert.notEqual(close.focus, true)
+})
+
+test('отказ открыть вкладку в неоткрытом чате объясняется, а не висит', async (t) => {
+  const r = await rig(
+    {},
+    {
+      // Панели нет: чат ни разу не показывали.
+      noPanel: true,
+      controlReply: (command) =>
+        command.type === 'open'
+          ? { code: 'needs-chat', error: 'этот чат ещё ни разу не открывали — откройте его один раз' }
+          : { opened: true, revealed: 'tab-1', shown: true },
+    },
+  )
+  t.after(() => r.stop())
+  // Панели ещё нет, поэтому browser_open пойдёт открывать её и получит отказ.
+  await assert.rejects(
+    () => r.call('browser_open'),
+    (error) => {
+      assert.match(String(error.message), /откройте его один раз/i)
+      return true
+    },
+  )
+})
+
+test('открытие вкладки просит клиент не переключать чат', async (t) => {
+  const r = await rig({})
+  t.after(() => r.stop())
+  await r.call('browser_open')
+  const open = r.controls.find((c) => c.type === 'open' || c.type === 'reveal')
+  assert.ok(open, 'должна уйти управляющая команда')
+  assert.notEqual(open.focus, true)
+  // allowSwitch приходит с хоста и по умолчанию false.
+  if (open.type === 'open') assert.equal(open.allowSwitch, false)
 })
 
 test('язык ответов берётся из настройки, а не из локали машины', async (t) => {
